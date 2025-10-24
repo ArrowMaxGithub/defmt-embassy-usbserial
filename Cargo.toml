@@ -37,6 +37,17 @@ version = "0.5"
 [dependencies.static_cell]
 version = "2"
 
+[dev-dependencies]
+cortex-m-rt = "0.7"
+embassy-executor = { version = "0.9", features = [
+    "arch-cortex-m",
+    "executor-thread",
+    "executor-interrupt",
+] }
+embassy-rp = { version = "0.8", features = ["rp2040"] }
+embedded-hal-async = "1"
+panic-halt = "1"
+portable-atomic = { version = "1", features = ["default", "critical-section"] }
 
 [features]
 

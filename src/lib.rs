@@ -1,4 +1,145 @@
-//! `defmt` logger and USB transport layer.
+//! [`defmt`] global logger over USB serial for use with [Embassy].
+//!
+//! To use this crate spawn the [`run`] task, and use `defmt` as normal. Messages will be sent via
+//! USB-CDC to the host, where you should use something such as the [`defmt-print`] CLI tool to
+//! print them to your terminal.
+//!
+//! ## Quickstart
+//!
+//! Here's an example of using it with [`embassy_rp`], with the general HAL setup elided.
+//!
+//! ```no_run
+//! # #![no_std]
+//! # #![no_main]
+//! # use embassy_rp::{bind_interrupts, Peri};
+//! # use embassy_time::Instant;
+//! # use embedded_hal_async::delay::DelayNs;
+//! # use panic_halt as _;
+//! # bind_interrupts!(struct Irqs {
+//! #     USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
+//! # });
+//! #[embassy_executor::task]
+//! async fn defmtusb_wrapper(usb: Peri<'static, embassy_rp::peripherals::USB>) {
+//!     let driver = embassy_rp::usb::Driver::new(usb, Irqs);
+//!     let usb_config = {
+//!         let mut c = embassy_usb::Config::new(0x1234, 0x5678);
+//!         c.serial_number = Some("mydevice");
+//!         c.max_packet_size_0 = 64;
+//!         c.composite_with_iads = true;
+//!         c.device_class = 0xEF;
+//!         c.device_sub_class = 0x02;
+//!         c.device_protocol = 0x01;
+//!         c
+//!     };
+//!     defmtusb::run(driver, 64, usb_config).await;
+//! }
+//! #
+//! # #[embassy_executor::main]
+//! # async fn main(spawner: embassy_executor::Spawner) {
+//! #     let peripherals = embassy_rp::init(Default::default());
+//! #     let mut delay = embassy_time::Delay;
+//!
+//! // Inside your main function.
+//! spawner.must_spawn(defmtusb_wrapper(peripherals.USB));
+//! loop {
+//!     defmt::info!("Hello! {=u64:ts}", Instant::now().as_secs());
+//!     delay.delay_ms(1000).await;
+//! }
+//! # }
+//! ```
+//!
+//! ## Wrapper task
+//!
+//! A wrapper task is required because this library can't provide a task for you to spawn, since it
+//! has to be generic over the USB driver struct. While the quickstart example provides a
+//! straightforward example of constructing both the driver and the configuration in this task,
+//! ultimately the only requirement is that it awaits [`defmtusb::run`].
+//!
+//! ## Configuration
+//!
+//! For USB-CDC to be set up properly, you _must_ set the correct values in the configuration
+//! struct. If `composite_with_iads` is `true` (the default), you _must_ use the following values
+//! as `embassy-usb` will [fail an assertion][eusb-assert] if you do not:
+//!
+//! | Field | Value |
+//! |-------|-------|
+//! |`device_class`|`0xEF`|
+//! |`device_sub_class`|`0x02`|
+//! |`device_protocol`|`0x01`|
+//!
+//! If `composite_with_iads` is `false`, you do not have to use these exact values: the standard
+//! CDC device class code (`device_class`) is `0x02`. You should choose the values appropriate to
+//! your application. If your only concern is transporting defmt logs over USB serial, default to
+//! the values in the table above.
+//!
+//! ## Max packet size
+//!
+//! For USB full-speed the maximum packet size is 64 bytes, so you will see this in the
+//! documentation and examples. If you choose a value other than 64 ensure the packet size
+//! in the configuration struct and the packet size passed to `defmtusb::run` are the same.
+// TODO: defmtusb should just take the packet size from the config or default to 64.
+//!
+//! ## Examples
+//!
+//! Please see the [`device-examples/` directory in the repository][examples] for device-specific
+//! "hello world" examples.
+//!
+//! ## Known limitations
+//!
+//! ### Old or corrupt defmt messages are received after reconnecting
+//!
+//! If you stop reading the logs from the USB serial port, for example by closing `defmt-print`,
+//! when you reconnect you will likely receive part of one old defmt message (and potentially
+//! several complete out-out-date messages), and the first up-to-date defmt message will be
+//! corrupt.
+//!
+//! This is ultimately because the internal buffers are not aware of defmt frame boundaries. The
+//! first case will occur because the writing task will block part-way through writing an internal
+//! buffer to the USB serial port, and continues writing that now-stale buffer when you start
+//! reading again. (This may be avoided in a future release by way of a timeout.)
+//!
+//! The second is because that buffer may end part-way through a defmt message, and the next buffer
+//! that is written will likely start part-way through a defmt message. `defmt-print` may
+//! explicitly report these frames as malformed, or may silently misinterpret values to be included
+//! in a format message.
+//!
+//! Note as well that ceasing to read from the serial port does not disable defmt logging; it seems
+//! that only disconnecting from USB will trigger the event that toggles the logger.
+//!
+//! ### High message latency
+//!
+//! It may take some time for you to start receiving messages, and they may come through in bursts.
+//! This is due to the implementation waiting until one of its internal buffers is full before
+//! writing to the USB serial port.
+//!
+//! This effect will be most pronounced if you choose larger `defmtusb` buffer size features, and
+//! if you have messages with few (or no) formatting parameters, as this greatly reduces the size
+//! of the data that needs to be transferred.
+//!
+//! It may be possible to make the implementation aware of defmt messages, so that they come
+//! through in a more stream-like manner. Suggestions and contributions on this would be greatly
+//! appreciated.
+//!
+//! ### Buffers flushed only every 100ms
+//!
+//! Conversely, if you have a high volume of messages, there is at present a 100ms delay after
+//! writing an internal buffer to USB. It is planned to make this configurable.
+//!
+//! ## Acknowledgements
+//!
+//! Thank you to spcan, the original author of defmtusb. Thanks as well to the friendly and helpful
+//! members of the various embedded Rust Matrix rooms.
+//!
+//! ## License
+//!
+//! Dual-licensed under the Mozilla Public License 2.0 and the MIT license, at your option.
+//!
+//! [`defmt`]: https://github.com/knurling-rs/defmt
+//! [`defmt-print`]: https://crates.io/crates/defmt-print
+//! [`defmtusb::run`]: crate::task::run
+//! [eusb-assert]: https://github.com/embassy-rs/embassy/blob/4bff7cea1a26267ec3671250e954d9d4242fabde/embassy-usb/src/builder.rs#L175-L177
+//! [Embassy]: https://embassy.dev
+//! [`embassy_rp`]: https://docs.embassy.dev/embassy-rp/git/rp2040/index.html
 
 #![no_std]
 
