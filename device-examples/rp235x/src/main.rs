@@ -42,7 +42,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     rprintln!("Starting loop");
     defmt::info!("Starting loop");
     loop {
-        defmt::info!("Hello, world!  {=u64:ts}", Instant::now().as_secs());
-        delay.delay_ms(1000).await;
+        defmt::info!("Hello, world!  {=u64:tms}", Instant::now().as_millis());
+        delay.delay_ms(100).await;
     }
 }
