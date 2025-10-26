@@ -1,81 +1,75 @@
 # defmtusb
 
-`defmtusb` is a logger implementation for the `defmt` protocol that transports the log frames over USB. It is currently implemented to run within the `embassy` framework, with plans to allow for bare metal operation in the future.
+`defmtusb` lets you read your [Embassy] firmware's [`defmt`] log messages over USB serial.
 
-[`defmt`](https://github.com/knurling-rs/defmt) is a highly efficient logging framework targetting resource constrained devices like microcontrollers.
+[`defmt`]: https://github.com/knurling-rs/defmt
+[Embassy]: https://embassy.dev/
 
-This API is formed by two parts, microncontroller side tooling (this library) and host side tooling ([`defmthost`](https://github.com/micro-rust/defmthost)).
+## Quickstart
 
-## Usage
+This is the easiest method, for when you are not otherwise using the USB peripheral
+in your firmware (to, for example, act as a keyboard).
 
-To use `defmtusb` in your application simply add to your `Cargo.toml` file
-
-```toml
-defmtusb = "*"
-```
-
-and, at the root of your file structure (`main.rs`) add the next line to include the global logger
-```rust
-use defmtusb as _;
-```
-
-Remember that only one `defmt` logger must be imported at any time, otherwise the compilation may fail.
-
-## `embassy`
-
-To run the logger within the embassy framework, there are two methods that give a different level of granularity to the user.
-
-### Simple method
-
-If you don't need to use the USB driver in your application, you can simply pass ownership of this driver to the `run` task in `defmtusb` as follows
+Add `defmtusb` to your dependencies in your `Cargo.toml` file. In your firmware, create
+an Embassy task that constructs your HAL-specific USB driver and an approriate USB
+configuration. For example, using `embassy-rp` and with general firmware setup elided:
 
 ```rust
-#[task]
-pub(super) async fn logger(usb: USB) {
-    // Create the USB driver.
-    let driver = Driver::new(usb, Irqs);
+use embassy_rp::{bind_interrupts, Peri};
 
-    defmtusb::run(driver, <max_packet_size>, None).await;
+bind_interrupts!(struct Irqs {
+    USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
+});
+
+#[embassy_executor::task]
+async fn defmtusb_wrapper(usb: Peri<'static, embassy_rp::peripherals::USB>) {
+    let driver = embassy_rp::usb::Driver::new(usb, Irqs);
+    let usb_config = {
+        let mut c = embassy_usb::Config::new(0x1234, 0x5678);
+        c.serial_number = Some("mydevice");
+        c.max_packet_size_0 = 64;
+        c.composite_with_iads = true;
+        c.device_class = 0xEF;
+        c.device_sub_class = 0x02;
+        c.device_protocol = 0x01;
+        c
+    };
+    defmtusb::run(driver, 64, usb_config).await;
 }
 ```
 
-The user must insert the maximum packet size of the USB hardware, as there is no way to know this without hardware specific knowledge.
-
-Additionally the user may provide a configuration to the `run` function in order to customize the USB configuration, although the class of the device will be hard set to CDC ACM in order to maintain compatibility with UART to USB bridges (FT232, CP2120, etc...).
+In your main function, pass in the USB peripheral and spawn the task:
 
 ```rust
-#[task]
-pub(super) async fn logger(usb: USB) {
-    // Create the USB driver.
-    let driver = Driver::new(usb, Irqs);
+spawner.must_spawn(defmtusb_wrapper(peripherals.USB));
+```
 
-    // Create the configuration.
-    let mut cfg = Config::new(0xCAFE, 0xBEEF);
+Now you can use the `defmt` logging macros as you'd expect.
 
-    // Set information strings.
-    cfg.manufacturer = Some("manufacturer");
-    cfg.product = Some("product");
-    cfg.serial_number = Some("serial");
-
-    // Configure the default max power.
-    cfg.max_power = 100;
-
-    // Configure the max control packet size.
-    cfg.max_packet_size_0 = size as u8;
-
-    defmtusb::run(driver, <max_packet_size>, Some(cfg)).await;
+```rust
+loop {
+    defmt::info!("Hello! {=u64:ts}", Instant::now().as_secs());
+    delay.delay_ms(1000).await;
 }
 ```
 
+On the host side, use [`defmt-print`] to decode and print the messages.
 
-### Granular method
+[`defmt-print`]: https://crates.io/crates/defmt-print
 
-If you intend to create a variety of endpoints in the USB and use them, you can create them and then simply pass a CDC ACM `Sender` to the `logger` task in `defmtusb`. This method also requires the maximum packet size of the hardware USB implementation.
+## Complex USB setups
+
+(Note: This section has not yet been updated since the fork from micro-rust/defmtusb.)
+
+If you intend to create a variety of endpoints in the USB and use them, you can
+create them and then simply pass a CDC ACM `Sender` to the `logger` task in
+`defmtusb`. This method also requires the maximum packet size of the hardware
+USB implementation.
 
 
 ```rust
 #[task]
-pub(super) async fn logger(usb: USB) {
+async fn logger_wrapper(usb: USB) {
     // Create the USB driver.
     let driver = Driver::new(usb, Irqs);
 
@@ -93,19 +87,16 @@ pub(super) async fn logger(usb: USB) {
 }
 ```
 
-## Planned improvements
-
- - Configurable timeouts / poll rate
- - Configurable behaviour when USB is disconnected
-
 ## Contributing
 
-Any contribution intentionally submitted for inclusion in the work by you shall be licensed under either the MIT License or the Mozilla Public License Version 2.0, without any additional terms and conditions.
-
+Any contribution intentionally submitted for inclusion in the work by you shall
+be licensed under either the MIT License or the Mozilla Public License Version
+2.0, without any additional terms and conditions.
 
 ## License
-This work is licensed under
 
- - MIT License
- - Mozilla Public License Version 2.0 [LICENSE-MPL](/LICENSE-MPL)
+This work is licensed, at your option, under the
+
+ - [MIT License](/LICENSE-MIT)
+ - [Mozilla Public License Version 2.0](/LICENSE-MPL)
  
