@@ -23,7 +23,7 @@
 //!     let driver = embassy_rp::usb::Driver::new(usb, Irqs);
 //!     let usb_config = {
 //!         let mut c = embassy_usb::Config::new(0x1234, 0x5678);
-//!         c.serial_number = Some("mydevice");
+//!         c.serial_number = Some("defmt");
 //!         c.max_packet_size_0 = 64;
 //!         c.composite_with_iads = true;
 //!         c.device_class = 0xEF;

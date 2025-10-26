@@ -24,7 +24,7 @@ async fn defmtusb_wrapper(usb0: USB0<'static>, dp: GPIO20<'static>, dm: GPIO19<'
     let usb_driver = Driver::new(usb_peri, EP_OUT_BUFFER.take(), Default::default());
     let config = {
         let mut c = embassy_usb::Config::new(0x1234, 0x5678);
-        c.serial_number = Some("my-device");
+        c.serial_number = Some("defmt");
         c.max_packet_size_0 = 64;
         c.composite_with_iads = true;
         c.device_class = 0xEF;
