@@ -84,8 +84,8 @@
 //!
 //! ## Examples
 //!
-//! Please see the [`device-examples/` directory in the repository][examples] for device-specific
-//! "hello world" examples.
+//! Please see the `device-examples/` directory in the repository for device-specific "hello world"
+//! examples. These examples have all been tested on real hardware and are known to work.
 //!
 //! ## Known limitations
 //!
