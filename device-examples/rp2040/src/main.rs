@@ -26,7 +26,7 @@ async fn defmtusb_wrapper(usb: Peri<'static, USB>) {
         c
     };
     rprintln!("defmtusb::run");
-    defmt_embassy_usbserial::run(driver, 64, config).await;
+    defmt_embassy_usbserial::run(driver, config).await;
 }
 
 #[embassy_executor::main]

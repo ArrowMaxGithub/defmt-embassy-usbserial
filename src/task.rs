@@ -2,9 +2,9 @@
 
 use embassy_time::{Duration, Timer};
 use embassy_usb::{
+    Builder, Config,
     class::cdc_acm::{CdcAcmClass, Sender, State},
     driver::{Driver, EndpointError},
-    Builder, Config,
 };
 use static_cell::{ConstStaticCell, StaticCell};
 
@@ -30,10 +30,9 @@ static STATE: StaticCell<State> = StaticCell::new();
 /// This function builds the USB device with the provided driver and configuration, and awaits both
 /// it and the function that writes out buffered defmt messages over USB.
 ///
-/// Along with the usb driver implementation, users must pass the max packet size (up to 64 bytes),
-/// and a USB configuration that is properly set for USB-CDC. See [the library documentation][crate]
-/// for details about the requirements.
-pub async fn run<D: Driver<'static>>(driver: D, size: usize, config: Config<'static>) {
+/// Along with the usb driver implementation, users must pass a USB configuration that is properly
+/// set for USB-CDC. See [the library documentation][crate] for details about the requirements.
+pub async fn run<D: Driver<'static>>(driver: D, config: Config<'static>) {
     // Create the state of the CDC ACM device.
     let state: &'static mut State<'static> = STATE.init(State::new());
 
@@ -48,7 +47,8 @@ pub async fn run<D: Driver<'static>>(driver: D, size: usize, config: Config<'sta
     );
 
     // Create the class on top of the builder.
-    let class = CdcAcmClass::new(&mut builder, state, size as u16);
+    let packet_size = config.max_packet_size_0 as u16;
+    let class = CdcAcmClass::new(&mut builder, state, packet_size);
 
     // Build the USB.
     let mut usb = builder.build();
