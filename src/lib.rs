@@ -248,7 +248,7 @@ impl UsbEncoder {
     ///
     /// Must be called after calling `acquire` and before calling `release`.
     unsafe fn flush(&self) {
-        controller::CONTROLLER.swap()
+        unsafe { controller::CONTROLLER.swap() }
     }
 
     /// Write bytes to the defmt encoder.
@@ -257,7 +257,7 @@ impl UsbEncoder {
     ///
     /// Must be called after calling `acquire` and before calling `release`.
     unsafe fn write(&self, bytes: &[u8]) {
-        let encoder = &mut *self.encoder.get();
+        let encoder = unsafe { &mut *self.encoder.get() };
         encoder.write(bytes, Self::inner)
     }
 
@@ -279,14 +279,14 @@ unsafe impl defmt::Logger for USBLogger {
     }
 
     unsafe fn release() {
-        USB_ENCODER.release();
+        unsafe { USB_ENCODER.release() };
     }
 
     unsafe fn flush() {
-        USB_ENCODER.flush();
+        unsafe { USB_ENCODER.flush() };
     }
 
     unsafe fn write(bytes: &[u8]) {
-        USB_ENCODER.write(bytes);
+        unsafe { USB_ENCODER.write(bytes) };
     }
 }

@@ -2,7 +2,7 @@
 name = "defmt-embassy-usbserial"
 description = "Transmit defmt log messages over USB serial"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
 readme = "README.md"
 repository = "https://github.com/robjwells/defmt-embassy-usbserial"
 license = "MIT OR MPL-2.0"

@@ -127,7 +127,7 @@ impl Controller {
             // If it doesn't accept the bytes, mark it as flushing and swap buffers.
             // TODO: What if the alternate buffer _does not_ accept the bytes?
             // TODO: Document safety of this.
-            self.swap();
+            unsafe { self.swap() };
 
             if other.accepts(bytes.len()) {
                 // Write to the buffer the data.
