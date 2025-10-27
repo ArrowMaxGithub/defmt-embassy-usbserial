@@ -34,7 +34,7 @@ async fn defmtusb_wrapper(usb: Peri<'static, embassy_rp::peripherals::USB>) {
         c.device_protocol = 0x01;
         c
     };
-    defmtusb::run(driver, 64, usb_config).await;
+    defmt_embassy_usbserial::run(driver, usb_config).await;
 }
 ```
 

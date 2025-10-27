@@ -31,7 +31,7 @@
 //!         c.device_protocol = 0x01;
 //!         c
 //!     };
-//!     defmtusb::run(driver, 64, usb_config).await;
+//!     defmt_embassy_usbserial::run(driver, usb_config).await;
 //! }
 //! #
 //! # #[embassy_executor::main]
@@ -53,9 +53,9 @@
 //! A wrapper task is required because this library can't provide a task for you to spawn, since it
 //! has to be generic over the USB driver struct. While the quickstart example provides a
 //! straightforward example of constructing both the driver and the configuration in this task,
-//! ultimately the only requirement is that it awaits [`defmtusb::run`].
+//! ultimately the only requirement is that it awaits [`defmt_embassy_usbserial::run`].
 //!
-//! Of course, `defmtusb::run` is just an async function whose returned future can
+//! Of course, `defmt_embassy_usbserial::run` is just an async function whose returned future can
 //! be `join`ed, etc.
 //!
 //! ## Configuration
@@ -74,13 +74,6 @@
 //! CDC device class code (`device_class`) is `0x02`. You should choose the values appropriate to
 //! your application. If your only concern is transporting defmt logs over USB serial, default to
 //! the values in the table above.
-//!
-//! ## Max packet size
-//!
-//! For USB full-speed the maximum packet size is 64 bytes, so you will see this in the
-//! documentation and examples. If you choose a value other than 64 ensure the packet size
-//! in the configuration struct and the packet size passed to `defmtusb::run` are the same.
-// TODO: defmtusb should just take the packet size from the config or default to 64.
 //!
 //! ## Examples
 //!
@@ -114,7 +107,7 @@
 //! It may take some time for you to start receiving messages, and they may come through in bursts.
 //! This is due to the implementation waiting until one of its internal buffers is full before
 //! writing to the USB serial port. This effect will be more pronounced if you choose a larger
-//! `defmtusb` buffer size feature, and if you have messages with few (or no) formatting
+//! buffer size feature, and if you have messages with few (or no) formatting
 //! parameters, as this greatly reduces the size of the data that needs to be transferred.
 //!
 //! It may be possible to make the implementation aware of defmt messages, so that they come
@@ -137,7 +130,7 @@
 //!
 //! [`defmt`]: https://github.com/knurling-rs/defmt
 //! [`defmt-print`]: https://crates.io/crates/defmt-print
-//! [`defmtusb::run`]: crate::task::run
+//! [`defmtusb_embassy_usbserial::run`]: crate::task::run
 //! [eusb-assert]: https://github.com/embassy-rs/embassy/blob/4bff7cea1a26267ec3671250e954d9d4242fabde/embassy-usb/src/builder.rs#L175-L177
 //! [Embassy]: https://embassy.dev
 //! [`embassy_rp`]: https://docs.embassy.dev/embassy-rp/git/rp2040/index.html
