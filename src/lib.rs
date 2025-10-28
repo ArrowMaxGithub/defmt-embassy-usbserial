@@ -55,8 +55,7 @@
 //! straightforward example of constructing both the driver and the configuration in this task,
 //! ultimately the only requirement is that it awaits [`defmt_embassy_usbserial::run`].
 //!
-//! Of course, `defmt_embassy_usbserial::run` is just an async function whose returned future can
-//! be `join`ed, etc.
+//! Of course, `run` is just an async function whose returned future can be `join`ed, etc.
 //!
 //! ## Configuration
 //!
@@ -130,7 +129,7 @@
 //!
 //! [`defmt`]: https://github.com/knurling-rs/defmt
 //! [`defmt-print`]: https://crates.io/crates/defmt-print
-//! [`defmtusb_embassy_usbserial::run`]: crate::task::run
+//! [`defmt_embassy_usbserial::run`]: crate::task::run
 //! [eusb-assert]: https://github.com/embassy-rs/embassy/blob/4bff7cea1a26267ec3671250e954d9d4242fabde/embassy-usb/src/builder.rs#L175-L177
 //! [Embassy]: https://embassy.dev
 //! [`embassy_rp`]: https://docs.embassy.dev/embassy-rp/git/rp2040/index.html
